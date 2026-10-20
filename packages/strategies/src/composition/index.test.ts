@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { SimulationClock, ONE_HOUR_MS } from "../clock";
 import { BacktestPriceFeed } from "../feeds";
 import { ZERO_COSTS } from "../costs";
+import type { AccrualConfig } from "../backtest";
 import type { Strategy } from "../strategy";
 import { BuyAndHoldStrategy } from "../strategy";
 import { FixedPointDecimal } from "../types";
@@ -52,7 +53,8 @@ function composedBacktest(
   assets: readonly AssetSymbol[],
   usdcPrices: readonly string[],
   eurcPrices: readonly string[],
-  execution?: ExecutionConfig
+  execution?: ExecutionConfig,
+  accrual?: AccrualConfig
 ) {
   const end = START + (usdcPrices.length - 1) * ONE_HOUR_MS;
   return runComposedBacktest({
@@ -75,6 +77,7 @@ function composedBacktest(
     strategy,
     initialCash: amount("1000"),
     ...(execution === undefined ? {} : { execution }),
+    ...(accrual === undefined ? {} : { accrual }),
   });
 }
 
@@ -222,6 +225,87 @@ describe("ComposedStrategy", () => {
     ]);
     expect(exiting.finalValue.toString()).toBe("510");
     expect(exiting.pnlContribution.toString()).toBe("10");
+  });
+
+  it("attributes funding and cash interest to the owning member", () => {
+    const strategy = new ComposedStrategy([
+      {
+        id: "invested",
+        strategy: new BuyAndHoldStrategy(),
+        allocation: amount("0.5"),
+        config: { asset: USDC },
+      },
+      {
+        id: "cash-only",
+        strategy: {
+          name: "cash-only",
+          init: () => undefined,
+          step: () => undefined,
+          rebalance: () => [],
+          close: () => [],
+        },
+        allocation: amount("0.5"),
+        config: null,
+      },
+    ]);
+
+    const result = composedBacktest(
+      strategy,
+      [USDC],
+      ["100", "100"],
+      ["1", "1"],
+      undefined,
+      {
+        cashRatePerSecond: amount("0.0001"),
+        fundingRate: { ratePerSecond: amount("0.0001") },
+      }
+    );
+
+    expect(result.attribution.members[0]!.pnlContribution.toString()).toBe(
+      "-178.2"
+    );
+    expect(result.attribution.members[1]!.pnlContribution.toString()).toBe(
+      "180"
+    );
+    expect(
+      result.attribution.members
+        .reduce(
+          (total, member) => total.add(member.pnlContribution),
+          amount("0")
+        )
+        .toString()
+    ).toBe(result.attribution.totalPnl.toString());
+  });
+
+  it("attributes nested member activity to its top-level member", () => {
+    const strategy = new ComposedStrategy([
+      {
+        id: "outer",
+        strategy: new ComposedStrategy([
+          {
+            id: "inner",
+            strategy: new BuyAndHoldStrategy(),
+            allocation: amount("1"),
+            config: { asset: USDC },
+          },
+        ]),
+        allocation: amount("1"),
+        config: undefined,
+      },
+    ]);
+
+    const result = composedBacktest(
+      strategy,
+      [USDC],
+      ["100", "110"],
+      ["1", "1"]
+    );
+
+    expect(result.attribution.members).toHaveLength(1);
+    expect(result.attribution.members[0]!.id).toBe("outer");
+    expect(result.attribution.members[0]!.pnlContribution.toString()).toBe(
+      "99.5"
+    );
   });
 
   it("keeps same-asset positions separate through a backtest", () => {
