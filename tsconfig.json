@@ -13,5 +13,6 @@
     "isolatedModules": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true
-  }
+  },
+  "include": ["packages/strategies/src"]
 }

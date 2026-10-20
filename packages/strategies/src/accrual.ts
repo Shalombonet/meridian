@@ -24,6 +24,8 @@ export type PortfolioTransaction =
   | {
       /** Signed cash flow to the portfolio, so a credit is positive. */
       readonly type: "funding-payment";
+      readonly id: string;
+      readonly memberId?: string;
       readonly amount: FixedPointDecimal;
     }
   | {
@@ -48,6 +50,7 @@ export interface BorrowAccrualPosition {
 
 export interface FundingAccrualPosition extends FundingPosition {
   readonly id: string;
+  readonly memberId?: string;
   /**
    * Signed rate from the position's own perspective, using the convention
    * #864 documents for `FundingRate`. A positive rate credits the position and
@@ -243,6 +246,10 @@ export function accruePortfolioTick(
     if (accrued.amount !== 0n) {
       const transaction: PortfolioTransaction = {
         type: "funding-payment",
+        id: position.id,
+        ...(position.memberId === undefined
+          ? {}
+          : { memberId: position.memberId }),
         amount: FixedPointDecimal.fromStroops(accrued.amount),
       };
       transactions.push(transaction);
