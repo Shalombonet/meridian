@@ -57,21 +57,19 @@ export function runComposedBacktest(
     config.initialCash,
     strategy.memberAllocations
   );
-  const members: MemberLedger[] = strategy.memberAllocations.map(
-    ({ id }) => {
-      const capital = initialCapital.get(id);
-      if (capital === undefined) {
-        throw new Error(`missing initial capital for composition member "${id}"`);
-      }
-      return {
-        id,
-        initialCapital: capital,
-        snapshots: [],
-        cash: capital,
-        fees: ZERO,
-      };
+  const members: MemberLedger[] = strategy.memberAllocations.map(({ id }) => {
+    const capital = initialCapital.get(id);
+    if (capital === undefined) {
+      throw new Error(`missing initial capital for composition member "${id}"`);
     }
-  );
+    return {
+      id,
+      initialCapital: capital,
+      snapshots: [],
+      cash: capital,
+      fees: ZERO,
+    };
+  });
 
   const ownerFor = (namespace: string | undefined): MemberLedger => {
     const owner = members.find(
@@ -142,7 +140,9 @@ export function runComposedBacktest(
   const attributionMembers = members.map((member) => {
     const finalValue = member.finalValue;
     if (finalValue === undefined) {
-      throw new Error(`missing final value for composition member "${member.id}"`);
+      throw new Error(
+        `missing final value for composition member "${member.id}"`
+      );
     }
     return {
       id: member.id,
@@ -266,19 +266,22 @@ function applyCashInterest(
   if (amount.toStroops() === 0n) return;
   const totalCash = cashBefore.toStroops();
   if (totalCash === 0n) {
-    throw new Error("cash interest cannot be attributed with zero aggregate cash");
+    throw new Error(
+      "cash interest cannot be attributed with zero aggregate cash"
+    );
   }
 
   let assigned = 0n;
   const shares = members.map((member) => {
-    const share =
-      (amount.toStroops() * member.cash.toStroops()) / totalCash;
+    const share = (amount.toStroops() * member.cash.toStroops()) / totalCash;
     assigned += share;
     return share;
   });
   shares[0] = shares[0]! + amount.toStroops() - assigned;
   members.forEach((member, index) => {
-    member.cash = member.cash.add(FixedPointDecimal.fromStroops(shares[index]!));
+    member.cash = member.cash.add(
+      FixedPointDecimal.fromStroops(shares[index]!)
+    );
   });
 }
 

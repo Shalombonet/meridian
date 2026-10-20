@@ -78,10 +78,7 @@ export interface BacktestObserver {
     readonly price: FixedPointDecimal;
     readonly fee: FixedPointDecimal;
   }) => void;
-  readonly onSnapshot?: (
-    snapshot: BacktestSnapshot,
-    prices: PriceSet
-  ) => void;
+  readonly onSnapshot?: (snapshot: BacktestSnapshot, prices: PriceSet) => void;
   readonly onFinal?: (state: {
     readonly positions: readonly Position[];
     readonly prices: PriceSet;
@@ -221,7 +218,10 @@ export function runBacktest<TConfig = unknown>(
       positions: portfolio.positions(),
       value: portfolio.totalValue(market.prices),
     });
-    config.observer?.onSnapshot?.(snapshots[snapshots.length - 1]!, market.prices);
+    config.observer?.onSnapshot?.(
+      snapshots[snapshots.length - 1]!,
+      market.prices
+    );
 
     previous = timestamp;
     index += 1;

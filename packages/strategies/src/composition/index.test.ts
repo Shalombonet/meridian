@@ -108,20 +108,23 @@ describe("ComposedStrategy", () => {
       }
     );
 
-    expect(result.attribution.members.every(({ totalFees }) =>
-      totalFees.toStroops() > 0n
-    )).toBe(true);
     expect(
-      result.attribution.members.reduce(
-        (total, member) => total.add(member.pnlContribution),
-        amount("0")
-      ).toString()
+      result.attribution.members.every(
+        ({ totalFees }) => totalFees.toStroops() > 0n
+      )
+    ).toBe(true);
+    expect(
+      result.attribution.members
+        .reduce(
+          (total, member) => total.add(member.pnlContribution),
+          amount("0")
+        )
+        .toString()
     ).toBe(result.attribution.totalPnl.toString());
     expect(
-      result.attribution.members.reduce(
-        (total, member) => total.add(member.totalFees),
-        amount("0")
-      ).toString()
+      result.attribution.members
+        .reduce((total, member) => total.add(member.totalFees), amount("0"))
+        .toString()
     ).toBe(result.totalFees.toString());
   });
 
@@ -141,7 +144,12 @@ describe("ComposedStrategy", () => {
           config: { asset: USDC },
         },
       ]);
-      const result = composedBacktest(strategy, [USDC], ["100", "110"], ["1", "1"]);
+      const result = composedBacktest(
+        strategy,
+        [USDC],
+        ["100", "110"],
+        ["1", "1"]
+      );
       return serializeComposedAttribution(result.attribution);
     };
 
@@ -149,9 +157,7 @@ describe("ComposedStrategy", () => {
 
     expect(serialized).toBe(build());
     expect(
-      serializeComposedAttribution(
-        deserializeComposedAttribution(serialized)
-      )
+      serializeComposedAttribution(deserializeComposedAttribution(serialized))
     ).toBe(serialized);
     expect(JSON.parse(serialized)).toMatchObject({
       members: [

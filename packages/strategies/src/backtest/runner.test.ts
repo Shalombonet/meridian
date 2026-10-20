@@ -95,9 +95,7 @@ describe("runBacktest", () => {
       name: "member-fill",
       init: () => undefined,
       step: () => undefined,
-      rebalance: () => [
-        { asset: USDC, memberId: "alpha", size: amount("1") },
-      ],
+      rebalance: () => [{ asset: USDC, memberId: "alpha", size: amount("1") }],
       close: () => [],
     };
 
